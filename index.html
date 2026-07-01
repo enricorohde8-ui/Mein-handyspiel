@@ -62,8 +62,8 @@
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="controls-hint">
         <b>STEUERUNG AM HANDY (2 Klicks):</b><br>
-        Links tippen = <span style="color:#ff4136;font-weight:bold;">SCHLAGEN (Schläger)</span> | Rechts tippen = <span style="color:#0095ff;font-weight:bold;">SPRINGEN</span><br>
-        <span style="font-size:11px;color:#666;">Am PC: Pfeil-Nach-Unten = Schlagen | Pfeil-Nach-Oben = Springen</span>
+        Links tippen = <span style="color:#ff4136;font-weight:bold;">SCHLAGEN</span> | Rechts tippen = <span style="color:#0095ff;font-weight:bold;">SPRINGEN</span><br>
+        <span style="font-size:11px;color:#8b949e;">Fliegende Drohnen: Nicht springen (drunter herlaufen)! | Kisten: Überspringen!</span>
     </div>
 
 <script>
@@ -159,7 +159,8 @@ let obstacles = [];
 let score = 0;
 let highscore = localStorage.getItem("anwalt_highscore") || 0;
 let gameOver = false;
-let gameSpeed = 5.0;
+const startSpeed = 4.5; // Feste Start-Geschwindigkeit
+let gameSpeed = startSpeed;
 let spawnTimer = 0;
 
 highscoreElement.innerText = "🏆 HIGH: " + highscore;
@@ -167,7 +168,6 @@ highscoreElement.innerText = "🏆 HIGH: " + highscore;
 function triggerAction(action) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     
-    // Startet die Musik beim allerersten Tippen
     if (!musicInterval && !gameOver) {
         startMusic();
     }
@@ -222,7 +222,7 @@ function checkAttackHit() {
 function resetGame() {
     obstacles = [];
     score = 0;
-    gameSpeed = 5.0;
+    gameSpeed = startSpeed; // Setzt die Geschwindigkeit BEI JEDEM NEUSTART exakt zurück!
     player.y = 300;
     player.velocity = 0;
     player.isJumping = false;
@@ -254,12 +254,18 @@ function update() {
         if (player.attackTimer <= 0) player.isAttacking = false;
     }
 
-    if (spawnTimer % 90 === 0) {
-        let r = Math.random();
-        if (r < 0.7) {
+    // Zufälliges Spawnen der 3 Hindernisse
+    if (spawnTimer % 100 === 0) {
+        let rand = Math.random();
+        if (rand < 0.45) {
+            // 1. Gegner zum Schlagen
             obstacles.push({ x: canvas.width, y: 300, width: 35, height: 45, type: 'enemy', isDead: false, vX: 0, vY: 0 });
+        } else if (rand < 0.75) {
+            // 2. Kiste zum Drüberspringen
+            obstacles.push({ x: canvas.width, y: 315, width: 35, height: 30, type: 'box' });
         } else {
-            obstacles.push({ x: canvas.width, y: 320, width: 40, height: 25, type: 'spike' });
+            // 3. Fliegende Drohne (Drunter herlaufen!)
+            obstacles.push({ x: canvas.width, y: 230, width: 40, height: 20, type: 'drone' });
         }
     }
 
@@ -273,6 +279,7 @@ function update() {
         } else {
             obs.x -= gameSpeed;
             
+            // Kollision
             if (player.x < obs.x + obs.width && player.x + player.width > obs.x &&
                 player.y < obs.y + obs.height && player.y + player.height > obs.y) {
                 
@@ -291,7 +298,7 @@ function update() {
             obs.passed = true;
             score++;
             scoreElement.innerText = "SCORE: " + score;
-            gameSpeed += 0.15;
+            gameSpeed += 0.05; // Viel sanftere Beschleunigung als vorher!
         }
 
         if (obs.x < -100 || obs.y > canvas.height + 50) obstacles.splice(i, 1);
@@ -314,25 +321,35 @@ function drawPixelArt(matrix, itemX, itemY, itemW, itemH, color) {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Boden
     ctx.fillStyle = "#21262d";
     ctx.fillRect(0, 345, canvas.width, 55);
     ctx.fillStyle = "#30363d";
     ctx.fillRect(0, 345, canvas.width, 4);
 
+    // Hindernisse zeichnen
     for (let obs of obstacles) {
         if (obs.type === 'enemy') {
             let enemyColor = obs.isDead ? "#444c56" : "#ff4136";
             drawPixelArt(pixelEnemy, obs.x, obs.y, obs.width, obs.height, enemyColor);
-        } else if (obs.type === 'spike') {
-            ctx.fillStyle = "#da3637";
-            ctx.beginPath();
-            ctx.moveTo(obs.x, obs.y + obs.height);
-            ctx.lineTo(obs.x + obs.width/2, obs.y);
-            ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
-            ctx.fill();
+        } else if (obs.type === 'box') {
+            // Retro Holzkiste (Gelb/Braun)
+            ctx.fillStyle = "#d4a373";
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = "#aa7c11";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(obs.x + 2, obs.y + 2, obs.width - 4, obs.height - 4);
+        } else if (obs.type === 'drone') {
+            // Fliegende Drohne (Neon-Cyan)
+            ctx.fillStyle = "#56e39f";
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.fillStyle = "#00b4d8";
+            ctx.fillRect(obs.x + 5, obs.y + obs.height, 10, 4);
+            ctx.fillRect(obs.x + obs.width - 15, obs.y + obs.height, 10, 4);
         }
     }
 
+    // Spieler zeichnen
     ctx.save();
     let currentPose = JSON.parse(JSON.stringify(pixelMan));
     if (player.y === 300 && Math.floor(player.animFrame / 6) % 2 === 0) {
