@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mega Handy Jump</title>
+    <title>Pixel Arcade Jump, Climb & Slide</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background: #1a1a1a;
+            background: #111116;
             color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -23,41 +23,46 @@
         }
         #ui-container {
             position: absolute;
-            top: 15px;
+            top: 10px;
             display: flex;
             justify-content: space-between;
-            width: 90%;
-            max-width: 600px;
-            font-size: 20px;
+            width: 95%;
+            max-width: 800px;
+            font-size: 18px;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            z-index: 10;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
         }
         #highscore { color: #FFD700; }
         canvas {
-            background: #252525;
-            border-top: 4px solid #0095DD;
-            border-bottom: 4px solid #0095DD;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: #1e1e24;
+            border: 4px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
             width: 100%;
-            max-height: 70vh;
+            max-height: 65vh;
         }
-        #hint {
-            position: absolute;
-            bottom: 25px;
-            color: #aaa;
-            font-size: 14px;
+        #controls-hint {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #888;
             text-align: center;
+            line-height: 1.4;
         }
     </style>
 </head>
 <body>
 
     <div id="ui-container">
-        <div id="score">Score: 0</div>
-        <div id="highscore">🏆 High: 0</div>
+        <div id="score">SCORE: 0</div>
+        <div id="highscore">🏆 HIGH: 0</div>
     </div>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div id="hint">Tippe für Sprung / Doppelsprung<br>Sound am Handy einschalten!</div>
+    <div id="controls-hint">
+        <b>STEUERUNG AM HANDY:</b> Links tippen = RUTSCHEN | Rechts tippen = JUMP / KLETTERN<br>
+        <b>AM PC:</b> Pfeil-Nach-Oben = Jump | Pfeil-Nach-Unten = Rutschen
+    </div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
@@ -65,8 +70,40 @@ const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
 const highscoreElement = document.getElementById("highscore");
 
-// Sound-Generator (Web Audio API für Offline-Sounds ohne Dateien)
+// Web Audio API für Sound & Musik
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let musicInterval = null;
+let musicStep = 0;
+
+// Einfache 8-Bit Melodie (Notenfrequenzen)
+const melody = [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 329.63, 293.66]; 
+
+function playMusicNode() {
+    if (gameOver || audioCtx.state === 'suspended') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(melody[musicStep % melody.length], audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+    musicStep++;
+}
+
+function startMusic() {
+    if(musicInterval) clearInterval(musicInterval);
+    musicStep = 0;
+    musicInterval = setInterval(playMusicNode, 300); // Spielt alle 300ms eine Note
+}
+
+function stopMusic() {
+    clearInterval(musicInterval);
+}
 
 function playSound(type) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -76,282 +113,368 @@ function playSound(type) {
     gain.connect(audioCtx.destination);
 
     if (type === 'jump') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(450, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.12);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.12);
     } else if (type === 'coin') {
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // E5
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(880.00, audioCtx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
     } else if (type === 'hit') {
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-        osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.4);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        osc.frequency.setValueAtTime(250, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
     }
 }
 
-// Spieler-Eigenschaften
+// Pixel Art Matrizen (1 = Farbe, 0 = Leer)
+const pixelMan = [
+    [0,0,1,1,1,0,0],
+    [0,0,1,0,1,0,0],
+    [0,0,1,1,1,0,0],
+    [0,1,1,1,1,1,0],
+    [1,0,1,1,1,0,1],
+    [0,0,1,1,1,0,0],
+    [0,0,1,0,1,0,0],
+    [0,1,0,0,0,1,0]
+];
+
+const pixelEnemy = [
+    [1,0,0,0,0,0,1],
+    [0,1,1,1,1,1,0],
+    [1,1,0,1,0,1,1],
+    [1,1,1,1,1,1,1],
+    [0,1,1,1,1,1,0],
+    [1,0,1,0,1,0,1],
+    [1,0,0,0,0,0,1]
+];
+
+// Spieler Zustand
 const player = {
-    x: 80,
-    y: 280,
-    width: 40,
-    height: 40,
-    color: "#0095DD",
-    gravity: 0.6,
-    lift: -11,
-    velocity: 0,
-    jumpCount: 0,
-    maxJumps: 2, // DOUBLE JUMP!
-    vx: 0, // Für den Rückprall-Effekt beim Sterben
-    rotation: 0
+    x: 100, y: 310, width: 35, height: 40,
+    baseHeight: 40, slideHeight: 20,
+    gravity: 0.6, lift: -11.5, velocity: 0, vx: 0,
+    jumpCount: 0, maxJumps: 2,
+    isSliding: false, slideTimer: 0,
+    isClimbing: false,
+    animFrame: 0, rotation: 0
 };
 
 let obstacles = [];
 let coins = [];
 let spawnTimer = 0;
+let lastSpawnDistance = 0; // Verhindert unfaire Abstände
 let score = 0;
-let highscore = localStorage.getItem("jump_highscore") || 0;
+let highscore = localStorage.getItem("pixel_highscore") || 0;
 let gameOver = false;
-let gameSpeed = 5.5;
+let gameSpeed = 5.0;
 
-highscoreElement.innerText = "🏆 High: " + highscore;
+highscoreElement.innerText = "🏆 HIGH: " + highscore;
 
-function handleJump() {
+// Kombinierte Steuerung (Rechts = Jump/Klettern, Links = Rutschen)
+function triggerAction(action) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
     if (gameOver) {
-        // Falls tot, startet ein Tippen das Spiel neu, aber erst wenn er gelandet ist
-        if (player.y >= canvas.height - player.height - 20) {
-            resetGame();
-        }
+        if (player.y >= canvas.height - player.height - 20) resetGame();
         return;
     }
 
-    if (player.jumpCount < player.maxJumps) {
-        player.velocity = player.lift;
-        player.jumpCount++;
-        playSound('jump');
+    if (action === 'jump') {
+        if (player.isClimbing) {
+            // Höher klettern an der Wand
+            player.y -= 25;
+            playSound('jump');
+            // Wenn oben angekommen, rüberspringen
+            if (player.y < 180) {
+                player.isClimbing = false;
+                player.velocity = -6;
+                player.vx = 4; // Stoß nach vorne über die Wand
+            }
+        } else if (player.jumpCount < player.maxJumps) {
+            player.isSliding = false;
+            player.height = player.baseHeight;
+            player.velocity = player.lift;
+            player.jumpCount++;
+            playSound('jump');
+        }
+    } else if (action === 'slide') {
+        if (!player.isJumping && !player.isClimbing && !player.isSliding) {
+            player.isSliding = true;
+            player.height = player.slideHeight;
+            player.y += (player.baseHeight - player.slideHeight); // Nach unten ducken
+            player.slideTimer = 25; // Dauer des Rutschens
+        }
     }
 }
 
-window.addEventListener("touchstart", (e) => { e.preventDefault(); handleJump(); }, { passive: false });
-window.addEventListener("mousedown", (e) => { if(e.button === 0) handleJump(); });
-
-function spawnObstacle() {
-    // Verschiedene Gegnertypen (schnell/klein, groß/langsam)
-    const type = Math.random();
-    let size, speedModifier, color;
-
-    if (type < 0.3) { 
-        size = 20; speedModifier = 2.5; color = "#FF4136"; // Flitzer
-    } else if (type < 0.6) {
-        size = 55; speedModifier = -1.5; color = "#B10DC9"; // Riese (langsam)
+// Touch Event-Handler für geteilten Bildschirm
+window.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    const touchX = e.touches[0].clientX;
+    if (touchX < window.innerWidth / 2) {
+        triggerAction('slide');
     } else {
-        size = 35; speedModifier = 0; color = "#FF851B"; // Normal
+        triggerAction('jump');
+    }
+}, { passive: false });
+
+// PC Tastatur-Zuweisung
+window.addEventListener("keydown", (e) => {
+    if (e.code === "ArrowUp" || e.code === "Space") triggerAction('jump');
+    if (e.code === "ArrowDown") triggerAction('slide');
+});
+
+function spawnEverything() {
+    spawnTimer++;
+    lastSpawnDistance++;
+
+    // Absolut faires Spawning: Nur alle 110 Frames darf überhaupt etwas Neues kommen
+    if (lastSpawnDistance > 110 && Math.random() < 0.03) {
+        let r = Math.random();
+        if (r < 0.4) {
+            // 1. Normaler Boden-Gegner (Pixel-Monster)
+            obstacles.push({ x: canvas.width, y: 315, width: 35, height: 35, type: 'enemy', color: '#FF4136', speed: gameSpeed + (Math.random() * 2 - 1) });
+        } else if (r < 0.7) {
+            // 2. KLETTERWAND (Hoch, muss erklettert werden)
+            obstacles.push({ x: canvas.width, y: 210, width: 25, height: 140, type: 'wall', color: '#777788' });
+        } else {
+            // 3. FLIEGENDES HINDERNIS (Darunter durchrutschen!)
+            obstacles.push({ x: canvas.width, y: 180, width: 50, height: 100, type: 'ceiling', color: '#00F5D4' });
+        }
+        lastSpawnDistance = 0;
     }
 
-    obstacles.push({
-        x: canvas.width,
-        y: canvas.height - size - 20,
-        width: size,
-        height: size,
-        speed: gameSpeed + speedModifier,
-        color: color,
-        passed: false
-    });
-}
-
-function spawnCoin() {
-    // Münzen spawnen in unterschiedlichen Höhen für Doppelsprünge
-    let coinY = canvas.height - 80 - Math.floor(Math.random() * 140);
-    coins.push({
-        x: canvas.width,
-        y: coinY,
-        radius: 10,
-        color: "#FFD700",
-        collected: false
-    });
+    // Münzen spawnen separat in sicheren Höhen
+    if (spawnTimer % 140 === 0 && Math.random() > 0.3) {
+        coins.push({ x: canvas.width, y: 180 + Math.random() * 100, radius: 8, collected: false });
+    }
 }
 
 function resetGame() {
-    obstacles = [];
-    coins = [];
-    score = 0;
-    gameSpeed = 5.5;
-    player.x = 80;
-    player.y = 280;
-    player.velocity = 0;
-    player.vx = 0;
-    player.rotation = 0;
-    player.jumpCount = 0;
-    gameOver = false;
-    scoreElement.innerText = "Score: 0";
+    obstacles = []; coins = []; score = 0; gameSpeed = 5.0;
+    player.x = 100; player.y = 310; player.height = player.baseHeight;
+    player.velocity = 0; player.vx = 0; player.rotation = 0;
+    player.jumpCount = 0; player.isSliding = false; player.isClimbing = false;
+    gameOver = false; spawnTimer = 0; lastSpawnDistance = 150;
+    scoreElement.innerText = "SCORE: 0";
+    startMusic();
     gameLoop();
 }
 
 function update() {
-    // Physik für den Spieler (auch im GameOver für den Sturz)
-    player.velocity += player.gravity;
-    player.y += player.velocity;
-    player.x += player.vx; // Rückprall-Bewegung
+    if (!gameOver) {
+        player.animFrame++;
+        spawnEverything();
+    }
 
-    const groundY = canvas.height - player.height - 20;
+    // Rutsch-Timer runterzählen
+    if (player.isSliding) {
+        player.slideTimer--;
+        if (player.slideTimer <= 0) {
+            player.isSliding = false;
+            player.y -= (player.baseHeight - player.slideHeight);
+            player.height = player.baseHeight;
+        }
+    }
+
+    // Schwerkraft & Bewegung anwenden
+    if (!player.isClimbing) {
+        player.velocity += player.gravity;
+        player.y += player.velocity;
+        player.x += player.vx;
+        player.vx *= 0.95; // Rückstoß abbremsen
+    }
+
+    // Boden-Kollision
+    const groundY = 350 - player.height;
     if (player.y > groundY) {
         player.y = groundY;
         player.velocity = 0;
-        if (!gameOver) {
-            player.jumpCount = 0;
-        } else {
-            player.vx *= 0.8; // Reibung am Boden nach Tod
-        }
+        if (!gameOver) player.jumpCount = 0;
     }
 
-    if (gameOver) {
-        if(player.y < groundY) player.rotation += 0.1; // Drehung beim Runterfallen
-        return;
-    }
+    // Spielfeldgrenze links halten
+    if (!gameOver && player.x < 100) player.x += 1;
 
-    // Spawns verwalten
-    spawnTimer++;
-    if (spawnTimer % 80 === 0) spawnObstacle();
-    if (spawnTimer % 110 === 0) spawnCoin();
-
-    // Hindernisse bewegen & prüfen
+    // Hindernisse verarbeiten
     for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= obstacles[i].speed;
+        let obs = obstacles[i];
+        obs.x -= (obs.type === 'enemy' ? obs.speed : gameSpeed);
 
-        // Kollision mit Gegner (AABB)
-        if (
-            player.x < obstacles[i].x + obstacles[i].width &&
-            player.x + player.width > obstacles[i].x &&
-            player.y < obstacles[i].y + obstacles[i].height &&
-            player.y + player.height > obstacles[i].y
-        ) {
-            gameOver = true;
-            playSound('hit');
-            player.velocity = -8; // Schleudert den Spieler hoch
-            player.vx = -5;       // Schleudert den Spieler nach hinten
+        // Kollisionsprüfung (AABB)
+        if (player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height && player.y + player.height > obs.y) {
             
-            // Highscore prüfen
-            if (score > highscore) {
-                highscore = score;
-                localStorage.setItem("jump_highscore", highscore);
-                highscoreElement.innerText = "🏆 High: " + highscore;
+            if (obs.type === 'wall' && !gameOver) {
+                // AN WAND FESTHALTEN & KLETTERN
+                if (!player.isClimbing && player.velocity > 0) {
+                    player.isClimbing = true;
+                    player.velocity = 0;
+                    player.x = obs.x - player.width + 2; // Exakt an die Kante setzen
+                }
+            } else {
+                // TOD DURCH AUFPRALL (Gegner oder Decke rammen)
+                if (!gameOver) {
+                    gameOver = true;
+                    stopMusic();
+                    playSound('hit');
+                    player.isClimbing = false;
+                    player.velocity = -7; // Rückprall nach oben
+                    player.vx = -6;       // Rückprall nach links
+                    if (score > highscore) {
+                        highscore = score;
+                        localStorage.setItem("pixel_highscore", highscore);
+                        highscoreElement.innerText = "🏆 HIGH: " + highscore;
+                    }
+                }
             }
         }
 
-        // Punkte für Passieren
-        if (obstacles[i].x + obstacles[i].width < player.x && !obstacles[i].passed) {
-            obstacles[i].passed = true;
-            score++;
-            scoreElement.innerText = "Score: " + score;
-            gameSpeed += 0.2; // Spiel wird stetig schneller
+        // Prüfen ob Wand weggelaufen ist beim Klettern
+        if (obs.type === 'wall' && player.isClimbing && obs.x + obs.width < player.x) {
+            player.isClimbing = false;
         }
 
-        if (obstacles[i].x + obstacles[i].width < 0) obstacles.splice(i, 1);
+        // Punkte fürs Passieren
+        if (obs.x + obs.width < player.x && !obs.passed) {
+            obs.passed = true;
+            score++;
+            scoreElement.innerText = "SCORE: " + score;
+            gameSpeed += 0.15;
+        }
+
+        if (obs.x + obs.width < 0) obstacles.splice(i, 1);
     }
 
-    // Münzen bewegen & einsammeln
+    // Münzen verarbeiten
     for (let i = coins.length - 1; i >= 0; i--) {
-        coins[i].x -= gameSpeed;
+        let c = coins[i];
+        c.x -= gameSpeed;
 
-        // Kollision Kreis/Rechteck für Münze
-        let distX = Math.abs(coins[i].x - player.x - player.width/2);
-        let distY = Math.abs(coins[i].y - player.y - player.height/2);
-
-        if (distX <= (player.width/2 + coins[i].radius) && distY <= (player.height/2 + coins[i].radius)) {
-            score += 3; // Münze gibt 3 Extra-Punkte!
-            scoreElement.innerText = "Score: " + score;
+        if (Math.abs(c.x - (player.x + player.width/2)) < player.width/2 + c.radius &&
+            Math.abs(c.y - (player.y + player.height/2)) < player.height/2 + c.radius) {
+            score += 3;
+            scoreElement.innerText = "SCORE: " + score;
             playSound('coin');
             coins.splice(i, 1);
             continue;
         }
+        if (c.x + c.radius < 0) coins.splice(i, 1);
+    }
+}
 
-        if (coins[i].x + coins[i].radius < 0) coins.splice(i, 1);
+function drawPixelArt(matrix, itemX, itemY, itemW, itemH, color) {
+    let pixelW = itemW / matrix[0].length;
+    let pixelH = itemH / matrix.length;
+    ctx.fillStyle = color;
+    for (let r = 0; r < matrix.length; r++) {
+        for (let c = 0; c < matrix[r].length; c++) {
+            if (matrix[r][c] === 1) {
+                ctx.fillRect(itemX + c * pixelW, itemY + r * pixelH, pixelW + 0.5, pixelH + 0.5);
+            }
+        }
     }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Hintergrund-Details (Rasterlinie für Geschwindigkeitsgefühl)
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 2;
-    for(let i=0; i<canvas.width; i+=40) {
-        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height-20); ctx.stroke();
-    }
+    // Retro Hintergrund-Sonne & Gitter-Boden
+    ctx.fillStyle = "#2a1b3d";
+    ctx.fillRect(0, 350, canvas.width, 50);
+    ctx.fillStyle = "#e43f5a";
+    ctx.fillRect(0, 347, canvas.width, 3);
 
-    // Boden
-    ctx.fillStyle = "#555";
-    ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-    ctx.fillStyle = "#0095DD";
-    ctx.fillRect(0, canvas.height - 23, canvas.width, 3);
-
-    // Münzen zeichnen
-    for (let coin of coins) {
+    // Münzen zeichnen (Retro Diamanten)
+    for (let c of coins) {
+        ctx.fillStyle = "#FFD700";
         ctx.beginPath();
-        ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
-        ctx.fillStyle = coin.color;
-        ctx.shadowBlur = 10; ctx.shadowColor = "#FFD700";
+        ctx.moveTo(c.x, c.y - c.radius);
+        ctx.lineTo(c.x + c.radius, c.y);
+        ctx.lineTo(c.x, c.y + c.radius);
+        ctx.lineTo(c.x - c.radius, c.y);
         ctx.fill();
-        ctx.shadowBlur = 0; // Reset Shadow
     }
 
     // Hindernisse zeichnen
     for (let obs of obstacles) {
-        ctx.fillStyle = obs.color;
-        ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+        if (obs.type === 'enemy') {
+            drawPixelArt(pixelEnemy, obs.x, obs.y, obs.width, obs.height, obs.color);
+        } else if (obs.type === 'wall') {
+            ctx.fillStyle = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            // Ziegelmuster-Linien auf der Wand
+            ctx.strokeStyle = "#444"; ctx.lineWidth = 1;
+            for(let h = obs.y + 10; h < obs.y + obs.height; h += 15) {
+                ctx.beginPath(); ctx.moveTo(obs.x, h); ctx.lineTo(obs.x + obs.width, h); ctx.stroke();
+            }
+        } else if (obs.type === 'ceiling') {
+            ctx.fillStyle = obs.color;
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.fillStyle = "#00bbf9";
+            ctx.fillRect(obs.x, obs.y + obs.height - 5, obs.width, 5); // Gefährliche Unterkante leuchtet
+        }
     }
 
-    // Spieler zeichnen (mit Drehung bei Tod)
+    // Spieler (Pixel-Männchen) zeichnen
     ctx.save();
     ctx.translate(player.x + player.width/2, player.y + player.height/2);
-    if (gameOver) ctx.rotate(player.rotation);
-    ctx.fillStyle = gameOver ? "#7F8C8D" : player.color; // Wird grau wenn tot
-    ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
     
-    // Kleines Gesicht/Auge für den Würfel
-    ctx.fillStyle = "#fff";
-    if(!gameOver) {
-        ctx.fillRect(10, -12, 10, 10); ctx.fillStyle = "#000"; ctx.fillRect(16, -10, 4, 4);
+    if (gameOver) {
+        player.rotation += 0.08;
+        ctx.rotate(player.rotation);
+        drawPixelArt(pixelMan, -player.width/2, -player.height/2, player.width, player.height, "#555566");
+    } else if (player.isClimbing) {
+        // Kletter-Pose (Arme hoch)
+        drawPixelArt(pixelMan, -player.width/2, -player.height/2, player.width, player.height, "#0095DD");
+    } else if (player.isSliding) {
+        // Flache Rutsch-Pose
+        ctx.scale(1.3, 0.5);
+        drawPixelArt(pixelMan, -player.width/2, -player.baseHeight/2, player.width, player.baseHeight, "#0095DD");
     } else {
-        // Toten-X als Auge
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(5,-8); ctx.lineTo(15,-2); ctx.moveTo(15,-8); ctx.lineTo(5,-2); ctx.stroke();
+        // Lauf-Animation über Beine-Wechsel gesteuert
+        let currentPose = JSON.parse(JSON.stringify(pixelMan));
+        if (player.y >= 310 && Math.floor(player.animFrame / 6) % 2 === 0) {
+            currentPose[7] = [1,0,0,0,0,0,1]; // Beine gegrätscht beim Laufen
+        }
+        drawPixelArt(currentPose, -player.width/2, -player.height/2, player.width, player.height, "#0095DD");
     }
     ctx.restore();
 
-    // Game Over Bildschirm
+    // Game Over UI
     if (gameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         ctx.fillStyle = "#FF4136";
-        ctx.font = "bold 36px sans-serif";
+        ctx.font = "bold 32px 'Courier New'";
         ctx.textAlign = "center";
-        ctx.fillText("CRASH! GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
-        ctx.fillStyle = "#fff";
-        ctx.font = "20px sans-serif";
-        ctx.fillText("Tippen zum Neustarten", canvas.width / 2, canvas.height / 2 + 20);
+        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px 'Courier New'";
+        ctx.fillText("TIPPEN FÜR NEUSTART", canvas.width / 2, canvas.height / 2 + 20);
     }
 }
 
 function gameLoop() {
     update();
     draw();
-    if (!gameOver || player.vx > 0.1 || player.y < canvas.height - player.height - 20) {
+    if (!gameOver || player.y < 310 || Math.abs(player.vx) > 0.1) {
         requestAnimationFrame(gameLoop);
     }
 }
 
-gameLoop();
+// Erster Spielstart
+resetGame();
 </script>
 </body>
 </html>
