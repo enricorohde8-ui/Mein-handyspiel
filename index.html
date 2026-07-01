@@ -3,139 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Handy Jump</title>
+    <title>Mega Handy Jump</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background: #222;
+            background: #1a1a1a;
             color: white;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             overflow: hidden;
-            /* Verhindert unabsichtliches Zoomen oder Markieren auf dem Handy */
             user-select: none;
             -webkit-user-select: none;
             touch-action: manipulation;
         }
-        #score {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 15px;
+        #ui-container {
             position: absolute;
-            top: 20px;
+            top: 15px;
+            display: flex;
+            justify-content: space-between;
+            width: 90%;
+            max-width: 600px;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
+        #highscore { color: #FFD700; }
         canvas {
-            background: #333;
-            border-top: 4px solid #fff;
-            border-bottom: 4px solid #fff;
+            background: #252525;
+            border-top: 4px solid #0095DD;
+            border-bottom: 4px solid #0095DD;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             width: 100%;
             max-height: 70vh;
         }
         #hint {
             position: absolute;
-            bottom: 30px;
-            color: #888;
-            font-size: 16px;
+            bottom: 25px;
+            color: #aaa;
+            font-size: 14px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div id="score">Score: 0</div>
-    <canvas id="gameCanvas" width="600" height="400"></canvas>
-    <div id="hint">Tippe auf den Bildschirm zum Springen</div>
+    <div id="ui-container">
+        <div id="score">Score: 0</div>
+        <div id="highscore">🏆 High: 0</div>
+    </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="hint">Tippe für Sprung / Doppelsprung<br>Sound am Handy einschalten!</div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const scoreElement = document.getElementById("score");
+const highscoreElement = document.getElementById("highscore");
 
-const player = {
-    x: 60,
-    y: 280,
-    width: 45,
-    height: 45,
-    color: "#0095DD",
-    gravity: 0.6,
-    lift: -13,
-    velocity: 0,
-    isJumping: false
-};
+// Sound-Generator (Web Audio API für Offline-Sounds ohne Dateien)
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-let obstacles = [];
-let spawnTimer = 0;
-let score = 0;
-let gameOver = false;
-let gameSpeed = 5.5;
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
 
-// Touch-Steuerung für das Handy (und Mausklick für PC)
-function handleJump() {
-    if (!player.isJumping && !gameOver) {
-        player.velocity = player.lift;
-        player.isJumping = true;
-    }
-    if (gameOver) {
-        resetGame();
+    if (type === 'jump') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'coin') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // E5
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.25);
+    } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
     }
 }
 
-window.addEventListener("touchstart", (e) => {
-    e.preventDefault(); // Verhindert doppelte Events
-    handleJump();
-}, { passive: false });
+// Spieler-Eigenschaften
+const player = {
+    x: 80,
+    y: 280,
+    width: 40,
+    height: 40,
+    color: "#0095DD",
+    gravity: 0.6,
+    lift: -11,
+    velocity: 0,
+    jumpCount: 0,
+    maxJumps: 2, // DOUBLE JUMP!
+    vx: 0, // Für den Rückprall-Effekt beim Sterben
+    rotation: 0
+};
 
-window.addEventListener("mousedown", handleJump);
+let obstacles = [];
+let coins = [];
+let spawnTimer = 0;
+let score = 0;
+let highscore = localStorage.getItem("jump_highscore") || 0;
+let gameOver = false;
+let gameSpeed = 5.5;
+
+highscoreElement.innerText = "🏆 High: " + highscore;
+
+function handleJump() {
+    if (gameOver) {
+        // Falls tot, startet ein Tippen das Spiel neu, aber erst wenn er gelandet ist
+        if (player.y >= canvas.height - player.height - 20) {
+            resetGame();
+        }
+        return;
+    }
+
+    if (player.jumpCount < player.maxJumps) {
+        player.velocity = player.lift;
+        player.jumpCount++;
+        playSound('jump');
+    }
+}
+
+window.addEventListener("touchstart", (e) => { e.preventDefault(); handleJump(); }, { passive: false });
+window.addEventListener("mousedown", (e) => { if(e.button === 0) handleJump(); });
 
 function spawnObstacle() {
-    let size = Math.floor(Math.random() * 25) + 25;
+    // Verschiedene Gegnertypen (schnell/klein, groß/langsam)
+    const type = Math.random();
+    let size, speedModifier, color;
+
+    if (type < 0.3) { 
+        size = 20; speedModifier = 2.5; color = "#FF4136"; // Flitzer
+    } else if (type < 0.6) {
+        size = 55; speedModifier = -1.5; color = "#B10DC9"; // Riese (langsam)
+    } else {
+        size = 35; speedModifier = 0; color = "#FF851B"; // Normal
+    }
+
     obstacles.push({
         x: canvas.width,
         y: canvas.height - size - 20,
         width: size,
         height: size,
-        color: "#FF4136",
+        speed: gameSpeed + speedModifier,
+        color: color,
         passed: false
+    });
+}
+
+function spawnCoin() {
+    // Münzen spawnen in unterschiedlichen Höhen für Doppelsprünge
+    let coinY = canvas.height - 80 - Math.floor(Math.random() * 140);
+    coins.push({
+        x: canvas.width,
+        y: coinY,
+        radius: 10,
+        color: "#FFD700",
+        collected: false
     });
 }
 
 function resetGame() {
     obstacles = [];
+    coins = [];
     score = 0;
     gameSpeed = 5.5;
+    player.x = 80;
     player.y = 280;
     player.velocity = 0;
-    player.isJumping = false;
+    player.vx = 0;
+    player.rotation = 0;
+    player.jumpCount = 0;
     gameOver = false;
     scoreElement.innerText = "Score: 0";
     gameLoop();
 }
 
 function update() {
-    if (gameOver) return;
-
+    // Physik für den Spieler (auch im GameOver für den Sturz)
     player.velocity += player.gravity;
     player.y += player.velocity;
+    player.x += player.vx; // Rückprall-Bewegung
 
     const groundY = canvas.height - player.height - 20;
     if (player.y > groundY) {
         player.y = groundY;
         player.velocity = 0;
-        player.isJumping = false;
+        if (!gameOver) {
+            player.jumpCount = 0;
+        } else {
+            player.vx *= 0.8; // Reibung am Boden nach Tod
+        }
     }
 
+    if (gameOver) {
+        if(player.y < groundY) player.rotation += 0.1; // Drehung beim Runterfallen
+        return;
+    }
+
+    // Spawns verwalten
     spawnTimer++;
-    if (spawnTimer % 85 === 0) {
-        spawnObstacle();
-    }
+    if (spawnTimer % 80 === 0) spawnObstacle();
+    if (spawnTimer % 110 === 0) spawnCoin();
 
+    // Hindernisse bewegen & prüfen
     for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= gameSpeed;
+        obstacles[i].x -= obstacles[i].speed;
 
+        // Kollision mit Gegner (AABB)
         if (
             player.x < obstacles[i].x + obstacles[i].width &&
             player.x + player.width > obstacles[i].x &&
@@ -143,48 +235,109 @@ function update() {
             player.y + player.height > obstacles[i].y
         ) {
             gameOver = true;
+            playSound('hit');
+            player.velocity = -8; // Schleudert den Spieler hoch
+            player.vx = -5;       // Schleudert den Spieler nach hinten
+            
+            // Highscore prüfen
+            if (score > highscore) {
+                highscore = score;
+                localStorage.setItem("jump_highscore", highscore);
+                highscoreElement.innerText = "🏆 High: " + highscore;
+            }
         }
 
+        // Punkte für Passieren
         if (obstacles[i].x + obstacles[i].width < player.x && !obstacles[i].passed) {
             obstacles[i].passed = true;
             score++;
             scoreElement.innerText = "Score: " + score;
-            if (score % 5 === 0) {
-                gameSpeed += 0.6;
-            }
+            gameSpeed += 0.2; // Spiel wird stetig schneller
         }
 
-        if (obstacles[i].x + obstacles[i].width < 0) {
-            obstacles.splice(i, 1);
+        if (obstacles[i].x + obstacles[i].width < 0) obstacles.splice(i, 1);
+    }
+
+    // Münzen bewegen & einsammeln
+    for (let i = coins.length - 1; i >= 0; i--) {
+        coins[i].x -= gameSpeed;
+
+        // Kollision Kreis/Rechteck für Münze
+        let distX = Math.abs(coins[i].x - player.x - player.width/2);
+        let distY = Math.abs(coins[i].y - player.y - player.height/2);
+
+        if (distX <= (player.width/2 + coins[i].radius) && distY <= (player.height/2 + coins[i].radius)) {
+            score += 3; // Münze gibt 3 Extra-Punkte!
+            scoreElement.innerText = "Score: " + score;
+            playSound('coin');
+            coins.splice(i, 1);
+            continue;
         }
+
+        if (coins[i].x + coins[i].radius < 0) coins.splice(i, 1);
     }
 }
 
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Hintergrund-Details (Rasterlinie für Geschwindigkeitsgefühl)
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 2;
+    for(let i=0; i<canvas.width; i+=40) {
+        ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height-20); ctx.stroke();
+    }
+
     // Boden
     ctx.fillStyle = "#555";
     ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+    ctx.fillStyle = "#0095DD";
+    ctx.fillRect(0, canvas.height - 23, canvas.width, 3);
 
-    // Spieler
-    ctx.fillStyle = player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
+    // Münzen zeichnen
+    for (let coin of coins) {
+        ctx.beginPath();
+        ctx.arc(coin.x, coin.y, coin.radius, 0, Math.PI * 2);
+        ctx.fillStyle = coin.color;
+        ctx.shadowBlur = 10; ctx.shadowColor = "#FFD700";
+        ctx.fill();
+        ctx.shadowBlur = 0; // Reset Shadow
+    }
 
-    // Hindernisse
+    // Hindernisse zeichnen
     for (let obs of obstacles) {
         ctx.fillStyle = obs.color;
         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
     }
 
+    // Spieler zeichnen (mit Drehung bei Tod)
+    ctx.save();
+    ctx.translate(player.x + player.width/2, player.y + player.height/2);
+    if (gameOver) ctx.rotate(player.rotation);
+    ctx.fillStyle = gameOver ? "#7F8C8D" : player.color; // Wird grau wenn tot
+    ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
+    
+    // Kleines Gesicht/Auge für den Würfel
+    ctx.fillStyle = "#fff";
+    if(!gameOver) {
+        ctx.fillRect(10, -12, 10, 10); ctx.fillStyle = "#000"; ctx.fillRect(16, -10, 4, 4);
+    } else {
+        // Toten-X als Auge
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(5,-8); ctx.lineTo(15,-2); ctx.moveTo(15,-8); ctx.lineTo(5,-2); ctx.stroke();
+    }
+    ctx.restore();
+
+    // Game Over Bildschirm
     if (gameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 32px sans-serif";
+        ctx.fillStyle = "#FF4136";
+        ctx.font = "bold 36px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillText("CRASH! GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = "#fff";
         ctx.font = "20px sans-serif";
         ctx.fillText("Tippen zum Neustarten", canvas.width / 2, canvas.height / 2 + 20);
     }
@@ -193,7 +346,7 @@ function draw() {
 function gameLoop() {
     update();
     draw();
-    if (!gameOver) {
+    if (!gameOver || player.vx > 0.1 || player.y < canvas.height - player.height - 20) {
         requestAnimationFrame(gameLoop);
     }
 }
