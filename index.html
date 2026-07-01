@@ -3,360 +3,330 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FortApex: Cyber Royale (My Vision)</title>
+    <title>Anwalt Style: Waldflug</title>
     <style>
         body {
-            margin: 0; padding: 0; background: #0b0b10; color: #fff;
-            font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; min-height: 100vh;
-            overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+            margin: 0;
+            padding: 0;
+            background: #0d1117;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
         }
-        #gameContainer { position: relative; width: 100vw; max-width: 800px; }
-        canvas { background: #13131a; display: block; width: 100%; height: auto; border: 3px solid #00d2d3; border-radius: 12px; box-shadow: 0 0 20px rgba(0, 210, 211, 0.3); }
-        #ui { position: absolute; top: 12px; left: 12px; font-weight: bold; text-shadow: 2px 2px 3px #000; font-size: 14px; pointer-events: none; line-height: 1.5; }
-        
-        /* Optimierte Touch-Steuerung fürs Smartphone */
-        #controls {
-            display: flex; justify-content: space-between; width: 100%;
-            max-width: 800px; padding: 12px; box-sizing: border-box; background: #111116; border-radius: 0 0 12px 12px;
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            display: flex;
+            justify-content: space-between;
+            width: 95%;
+            max-width: 800px;
+            font-size: 18px;
+            font-weight: bold;
+            z-index: 10;
+            background: rgba(0,0,0,0.6);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 2px solid #30363d;
         }
-        .btn-group { display: flex; gap: 8px; }
-        .btn-touch {
-            background: #1e272e; color: white; border: 2px solid #34495e; border-radius: 16px;
-            font-size: 20px; font-weight: bold; width: 65px; height: 65px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 0 #2c3e50;
+        #highscore { color: #FFD700; }
+        canvas {
+            background: #141f14;
+            border: 4px solid #30363d;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            width: 100%;
+            max-height: 65vh;
         }
-        .btn-touch:active { background: #00d2d3; border-color: #fff; box-shadow: 0 1px 0 #2c3e50; transform: translateY(3px); }
-        .btn-wide { width: 95px; font-size: 11px; text-align: center; text-transform: uppercase; }
-        #btnBuild { background: #27ae60; border-color: #2ecc71; box-shadow: 0 4px 0 #1e7e34; }
-        #btnAbility { background: #ff9f43; border-color: #f39c12; box-shadow: 0 4px 0 #d35400; }
-        #btnShoot { background: #ff4757; border-color: #ff6b6b; box-shadow: 0 4px 0 #c0392b; width: 80px; }
+        #controls-hint {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #8b949e;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
 
-    <div style="text-align:center; font-size:12px; color:#57606f; margin-bottom:5px; font-weight: bold;">📱 QUERFORMAT NUTZEN • TAP FÜR SOUND</div>
-
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div id="ui">
-            ❤️ LEBEN: <span id="hpUI">100</span> | 🛡️ SCHILD: <span id="shieldUI">50</span><br>
-            🪓 HOLZ: <span id="woodUI">5</span> | 🎯 GEGNER: <span id="enemiesUI">3</span><br>
-            ⚠️ <span id="zoneUI" style="color: #ff4757;">STORM AKTIV</span>
-        </div>
+    <div id="ui-container">
+        <div id="score">SCORE: 0</div>
+        <div id="highscore">🏆 HIGH: 0</div>
     </div>
-
-    <div id="controls">
-        <div class="btn-group">
-            <button class="btn-touch" id="btnLeft">◀</button>
-            <button class="btn-touch" id="btnJump">▲</button>
-            <button class="btn-touch" id="btnRight">▶</button>
-        </div>
-        
-        <div class="btn-group">
-            <button class="btn-touch btn-wide" id="btnBuild">🛠️ WAND<br>BAUEN</button>
-            <button class="btn-touch btn-wide" id="btnAbility">⚡ APEX<br>SLIDE</button>
-            <button class="btn-touch" id="btnShoot">🔥</button>
-        </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div id="controls-hint">
+        <b>STEUERUNG:</b> Tippen / Klicken = Nach oben fliegen! <br>Nicht den Boden, die Decke oder die Bäume berühren!
     </div>
 
 <script>
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const scoreElement = document.getElementById("score");
+const highscoreElement = document.getElementById("highscore");
 
-// Spielobjekte
-let player = {
-    x: 80, y: 300, w: 22, h: 36, vx: 0, vy: 0, 
-    hp: 100, shield: 50, wood: 5, facing: 'right',
-    isSliding: false, slideTimer: 0, abilityCooldown: 0, grounded: false
+// Web Audio API für Retro-Sounds
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let musicInterval = null;
+let musicStep = 0;
+const melody = [196.00, 220.00, 261.63, 220.00, 293.66, 261.63, 196.00, 220.00]; // Düsterer Arcade-Style
+
+function playMusicNode() {
+    if (gameOver || audioCtx.state === 'suspended') return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(melody[musicStep % melody.length], audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.22);
+    osc.start(); osc.stop(audioCtx.currentTime + 0.22);
+    musicStep++;
+}
+
+function startMusic() {
+    if(musicInterval) clearInterval(musicInterval);
+    musicStep = 0;
+    musicInterval = setInterval(playMusicNode, 260);
+}
+
+function stopMusic() { clearInterval(musicInterval); }
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+
+    if (type === 'flap') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'hit') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.6);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.6);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.6);
+    }
+}
+
+// Pixel Art Matrix für fliegendes Männchen (mit Flügel-Effekt)
+const pixelFlyer = [
+    [0,0,1,1,1,0,0],
+    [0,1,1,0,1,1,0],
+    [0,0,1,1,1,0,0],
+    [1,1,1,1,1,1,1],
+    [1,0,1,1,1,0,1],
+    [0,0,1,1,1,0,0],
+    [0,1,1,0,1,1,0]
+];
+
+// Spieler Eigenschaften (Flug-Modus)
+const player = {
+    x: 150,
+    y: 200,
+    width: 35,
+    height: 35,
+    gravity: 0.4,     // Zieht ihn nach unten
+    vlift: -6.5,       // Kraft nach oben pro Klick
+    velocity: 0,
+    animFrame: 0
 };
 
-// Gegner bewegen sich jetzt leicht hin und her
-let enemies = [
-    { x: 380, y: 220, startX: 350, endX: 480, w: 22, h: 36, hp: 60, dir: 1, v: 1, shootCooldown: 50 },
-    { x: 620, y: 140, startX: 600, endX: 720, w: 22, h: 36, hp: 60, dir: -1, v: 1.2, shootCooldown: 80 },
-    { x: 700, y: 344, startX: 650, endX: 760, w: 22, h: 36, hp: 100, dir: 1, v: 0.8, shootCooldown: 40 } // Boss Legend
-];
-
-let platforms = [
-    { x: 0, y: 380, w: 1000, h: 20 }, 
-    { x: 340, y: 260, w: 160, h: 14 }, 
-    { x: 580, y: 180, w: 160, h: 14 }
-];
-
-// MEIN VISION-FEATURE: Octane Launchpads!
-let launchpads = [
-    { x: 260, y: 372, w: 35, h: 8 },
-    { x: 520, y: 372, w: 35, h: 8 }
-];
-
-let bullets = [];
-let buildWalls = [];
-let stormX = 820; 
+let obstacles = [];
+let bgTrees = [];
+let score = 0;
+let highscore = localStorage.getItem("forest_highscore") || 0;
 let gameOver = false;
-let victory = false;
+let gameSpeed = 4.5;
+let spawnTimer = 0;
 
-// Audio Engine
-let audioCtx = null;
-function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-function playSound(f, type, d, v=0.1) {
-    if (!audioCtx) return;
-    try {
-        let osc = audioCtx.createOscillator(); let g = audioCtx.createGain();
-        osc.type = type; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + d);
-        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + d);
-    } catch(e){}
+highscoreElement.innerText = "🏆 HIGH: " + highscore;
+
+function handleFlap() {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (gameOver) {
+        resetGame();
+        return;
+    }
+    player.velocity = player.vlift;
+    playSound('flap');
 }
 
-// Touch Controller Setup
-let keys = { left: false, right: false };
-function bindTouch(id, press, release) {
-    const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); press(); });
-    if(release) btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
+window.addEventListener("touchstart", (e) => { e.preventDefault(); handleFlap(); }, { passive: false });
+window.addEventListener("mousedown", (e) => { if(e.button === 0) handleFlap(); });
+window.addEventListener("keydown", (e) => { if(e.code === "Space" || e.code === "ArrowUp") handleFlap(); });
+
+function resetGame() {
+    obstacles = [];
+    bgTrees = [];
+    score = 0;
+    gameSpeed = 4.5;
+    player.y = 200;
+    player.velocity = 0;
+    gameOver = false;
+    spawnTimer = 0;
+    scoreElement.innerText = "SCORE: 0";
+    
+    // Hintergrundbäume vorab generieren
+    for (let i = 0; i < canvas.width; i += 120) {
+        bgTrees.push({ x: i, width: 40 + Math.random()*40, height: 150 + Math.random()*100 });
+    }
+    
+    startMusic();
+    gameLoop();
 }
 
-bindTouch('btnLeft', () => { keys.left = true; player.facing = 'left'; }, () => keys.left = false);
-bindTouch('btnRight', () => { keys.right = true; player.facing = 'right'; }, () => keys.right = false);
-bindTouch('btnJump', () => {
-    if (player.grounded) {
-        player.vy = -10.5;
-        player.grounded = false;
-        playSound(300, 'triangle', 0.12, 0.15);
-    }
-});
-
-// Wand bauen (Fortnite Grid System vereinfacht)
-bindTouch('btnBuild', () => {
-    if (player.wood > 0 && !gameOver && !victory) {
-        let wallX = player.facing === 'right' ? player.x + 35 : player.x - 25;
-        buildWalls.push({ x: wallX, y: player.y - 14, w: 14, h: 50, hp: 4 });
-        player.wood--;
-        playSound(200, 'triangle', 0.08, 0.2);
-    }
-});
-
-// Apex Slide Fähigkeit
-bindTouch('btnAbility', () => {
-    if (player.abilityCooldown <= 0 && !gameOver && !victory) {
-        player.isSliding = true;
-        player.slideTimer = 22;
-        player.abilityCooldown = 80;
-        playSound(160, 'sawtooth', 0.25, 0.2);
-    }
-});
-
-// Waffen-Feuer
-bindTouch('btnShoot', () => {
-    if (gameOver || victory) return;
-    let bVx = player.facing === 'right' ? 9 : -9;
-    bullets.push({ x: player.x + 10, y: player.isSliding ? player.y + 25 : player.y + 12, vx: bVx, vy: 0, fromPlayer: true });
-    playSound(450, 'square', 0.08, 0.15);
-});
-
-// Haupt-Update Schleife
 function update() {
-    if (gameOver || victory) return;
+    if (gameOver) return;
 
-    if (player.abilityCooldown > 0) player.abilityCooldown--;
+    player.animFrame++;
+    spawnTimer++;
 
-    // Movement Geschwindigkeiten berechnen
-    let speed = 4.2;
-    if (player.isSliding) {
-        speed = 8.5; 
-        player.slideTimer--;
-        if (player.slideTimer <= 0) player.isSliding = false;
+    // Flug-Physik
+    player.velocity += player.gravity;
+    player.y += player.velocity;
+
+    // Kollision mit Decke oder Boden
+    if (player.y < 0 || player.y > canvas.height - player.height) {
+        triggerGameOver();
     }
 
-    if (keys.left) player.vx = -speed;
-    else if (keys.right) player.vx = speed;
-    else player.vx = 0;
-
-    player.vy += 0.48; // Schwerkraft
-    player.x += player.vx;
-    player.y += player.vy;
-    player.grounded = false;
-
-    // Kollision mit Plattformen
-    for (let p of platforms) {
-        if (player.x + player.w > p.x && player.x < p.x + p.w && player.y + player.h > p.y && player.y + player.h - player.vy <= p.y) {
-            player.y = p.y - player.h; player.vy = 0; player.grounded = true;
+    // Hintergrundbäume bewegen (Parallax-Effekt, langsam)
+    for (let tree of bgTrees) {
+        tree.x -= (gameSpeed * 0.3);
+        if (tree.x + tree.width < 0) {
+            tree.x = canvas.width;
+            tree.height = 150 + Math.random()*100;
         }
     }
 
-    // Launchpad Trigger Logik (Apex Jump)
-    for (let lp of launchpads) {
-        if (player.x + player.w > lp.x && player.x < lp.x + lp.w && player.y + player.h > lp.y && player.y + player.h - player.vy <= lp.y + 4) {
-            player.vy = -15; // Katapultiert den Spieler extrem hoch!
-            player.grounded = false;
-            playSound(600, 'sine', 0.3, 0.25);
-        }
+    // Feste Abstände für echte Hindernis-Bäume (Oben und Unten Lücken)
+    if (spawnTimer % 100 === 0) {
+        let gap = 130; // Größe der Fluglücke
+        let minHeight = 40;
+        let maxHeight = canvas.height - gap - minHeight;
+        let topHeight = Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
+        
+        obstacles.push({
+            x: canvas.width,
+            topHeight: topHeight,
+            bottomY: topHeight + gap,
+            width: 50,
+            passed: false
+        });
     }
 
-    // Wand-Kollision für Spieler
-    for (let w of buildWalls) {
-        if (player.x + player.w > w.x && player.x < w.x + w.w && player.y + player.h > w.y && player.y < w.y + w.h) {
-            player.x -= player.vx;
-        }
-    }
+    // Hindernisse bewegen
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        let obs = obstacles[i];
+        obs.x -= gameSpeed;
 
-    // Gegner KI Bewegung & automatisches Schießen
-    for (let e of enemies) {
-        e.x += e.v * e.dir;
-        if (e.x < e.startX || e.x > e.endX) e.dir *= -1;
-
-        e.shootCooldown--;
-        if (e.shootCooldown <= 0) {
-            let bVx = (player.x > e.x) ? 5.5 : -5.5;
-            bullets.push({ x: e.x + 10, y: e.y + 12, vx: bVx, vy: 0, fromPlayer: false });
-            e.shootCooldown = 70 + Math.random() * 50;
-        }
-    }
-
-    // Kugel-Logik verarbeiten
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        let b = bullets[i];
-        b.x += b.vx;
-
-        // Grenzwert-Prüfung außerhalb des Canvas
-        if (b.x < 0 || b.x > canvas.width) { bullets.splice(i, 1); continue; }
-
-        // Wand-Treffer prüfen
-        let bulletRemoved = false;
-        for (let j = buildWalls.length - 1; j >= 0; j--) {
-            let w = buildWalls[j];
-            if (b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h) {
-                w.hp--;
-                bullets.splice(i, 1);
-                bulletRemoved = true;
-                if (w.hp <= 0) buildWalls.splice(j, 1); 
-                break;
+        // Kollision mit oberem oder unterem Ast/Baumstamm
+        if (player.x < obs.x + obs.width && player.x + player.width > obs.x) {
+            if (player.y < obs.topHeight || player.y + player.height > obs.bottomY) {
+                triggerGameOver();
             }
         }
-        if (bulletRemoved) continue;
 
-        // Spieler Treffersensor
-        if (!b.fromPlayer && b.x > player.x && b.x < player.x + player.w && b.y > player.y && b.y < player.y + player.h) {
-            bullets.splice(i, 1);
-            if (player.shield > 0) player.shield -= 25;
-            else player.hp -= 20;
-            playSound(120, 'sawtooth', 0.15, 0.2);
-            if (player.hp <= 0) { player.hp = 0; gameOver = true; }
-            continue;
+        // Punkte zählen
+        if (obs.x + obs.width < player.x && !obs.passed) {
+            obs.passed = true;
+            score++;
+            scoreElement.innerText = "SCORE: " + score;
+            gameSpeed += 0.15; // Wird schneller
         }
 
-        // Gegner Treffersensor
-        if (b.fromPlayer) {
-            for (let j = enemies.length - 1; j >= 0; j--) {
-                let e = enemies[j];
-                if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
-                    bullets.splice(i, 1);
-                    e.hp -= 25;
-                    playSound(280, 'sine', 0.08, 0.15);
-                    if (e.hp <= 0) {
-                        enemies.splice(j, 1);
-                        player.wood += 4; // Mehr Baumaterial belohnen!
-                    }
-                    break;
-                }
-            }
-        }
+        if (obs.x + obs.width < 0) obstacles.splice(i, 1);
     }
-
-    // Der Sturm schrumpft
-    stormX -= 0.35;
-    if (player.x > stormX) {
-        player.hp -= 0.3;
-        if (player.hp <= 0) { player.hp = 0; gameOver = true; }
-    }
-
-    // Kartenbegrenzung links
-    if (player.x < 0) player.x = 0;
-
-    if (enemies.length === 0) victory = true;
-
-    // UI Aktualisierung
-    document.getElementById('hpUI').innerText = Math.ceil(player.hp);
-    document.getElementById('shieldUI').innerText = Math.max(0, player.shield);
-    document.getElementById('enemiesUI').innerText = enemies.length;
-    document.getElementById('woodUI').innerText = player.wood;
-    document.getElementById('zoneUI').innerText = "STURM: " + Math.max(0, Math.floor(stormX)) + "m";
 }
 
-// Visuelle Engine (Grafik)
+function triggerGameOver() {
+    gameOver = true;
+    stopMusic();
+    playSound('hit');
+    if (score > highscore) {
+        highscore = score;
+        localStorage.setItem("forest_highscore", highscore);
+        highscoreElement.innerText = "🏆 HIGH: " + highscore;
+    }
+}
+
+function drawPixelArt(matrix, itemX, itemY, itemW, itemH, color) {
+    let pixelW = itemW / matrix[0].length;
+    let pixelH = itemH / matrix.length;
+    ctx.fillStyle = color;
+    for (let r = 0; r < matrix.length; r++) {
+        for (let c = 0; c < matrix[r].length; c++) {
+            if (matrix[r][c] === 1) {
+                ctx.fillRect(itemX + c * pixelW, itemY + r * pixelH, pixelW + 0.6, pixelH + 0.6);
+            }
+        }
+    }
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Neon-Hintergrundgitter (Cyber-Look)
-    ctx.strokeStyle = '#1e272e'; ctx.lineWidth = 1;
-    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
-    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
-
-    // Plattformen zeichnen (Neon-Cyan)
-    ctx.fillStyle = '#0abde3';
-    for (let p of platforms) {
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-        ctx.fillStyle = '#00d2d3'; ctx.fillRect(p.x, p.y, p.w, 3); // Highlighting oben
-        ctx.fillStyle = '#0abde3';
+    // 1. Hintergrund-Bäume (Dunkelgrün, weit weg)
+    ctx.fillStyle = "#1b2e1b";
+    for (let tree of bgTrees) {
+        ctx.fillRect(tree.x, canvas.height - tree.height, tree.width, tree.height);
     }
 
-    // Launchpads zeichnen (Neon-Grün)
-    for (let lp of launchpads) {
-        ctx.fillStyle = '#10ac84'; ctx.fillRect(lp.x, lp.y, lp.w, lp.h);
-        ctx.fillStyle = '#1dd1a1'; ctx.fillRect(lp.x + 4, lp.y, lp.w - 8, 3);
+    // 2. Hindernis-Bäume im Vordergrund (Braun/Grün im Herr-Anwalt-Style)
+    for (let obs of obstacles) {
+        ctx.fillStyle = "#2d1e18"; // Holzstamm oben
+        ctx.fillRect(obs.x, 0, obs.width, obs.topHeight);
+        ctx.fillStyle = "#1e3f20"; // Blätterkante oben
+        ctx.fillRect(obs.x - 4, obs.topHeight - 12, obs.width + 8, 12);
+
+        ctx.fillStyle = "#2d1e18"; // Holzstamm unten
+        ctx.fillRect(obs.x, obs.bottomY, obs.width, canvas.height - obs.bottomY);
+        ctx.fillStyle = "#1e3f20"; // Blätterkante unten
+        ctx.fillRect(obs.x - 4, obs.bottomY, obs.width + 8, 12);
     }
 
-    // Holz-Wände zeichnen (Fortnite-Stil)
-    ctx.fillStyle = '#ff9f43';
-    for (let w of buildWalls) {
-        ctx.fillRect(w.x, w.y, w.w, w.h);
-        ctx.strokeStyle = '#ee5253'; ctx.lineWidth = 2; ctx.strokeRect(w.x, w.y, w.w, w.h);
+    // 3. Spieler zeichnen (Flatter-Animation über Skalierung)
+    ctx.save();
+    let currentFlyer = JSON.parse(JSON.stringify(pixelFlyer));
+    if (player.velocity < 0) {
+        ctx.scale(1, 0.8); // Flügel schlagen nach oben
     }
+    drawPixelArt(currentFlyer, player.x, player.y, player.width, player.height, "#0095DD");
+    ctx.restore();
 
-    // Spieler (Apex Held: Neon-Violett)
-    ctx.fillStyle = player.isSliding ? '#ff9f43' : '#9b59b6';
-    let rH = player.isSliding ? player.h / 1.8 : player.h;
-    let rY = player.isSliding ? player.y + (player.h - rH) : player.y;
-    ctx.fillRect(player.x, rY, player.w, rH);
-    
-    // Schildbalken-Effekt über dem Kopf
-    if (player.shield > 0) {
-        ctx.fillStyle = '#00d2d3'; ctx.fillRect(player.x - 4, player.y - 12, (player.w + 8) * (player.shield / 50), 4);
-    }
-
-    // Gegner (Neon-Rot)
-    ctx.fillStyle = '#ff4757';
-    for (let e of enemies) {
-        ctx.fillRect(e.x, e.y, e.w, e.h);
-        ctx.fillStyle = '#ff6b6b'; ctx.fillRect(e.x, e.y - 8, e.w * (e.hp / (e.hp > 60 ? 100 : 60)), 3);
-        ctx.fillStyle = '#ff4757';
-    }
-
-    // Schüsse (Laser-Gelb)
-    ctx.fillStyle = '#f1c40f';
-    for (let b of bullets) ctx.fillRect(b.x, b.y, 8, 3);
-
-    // Der Sturm (Lila, pulsierende Todeszone)
-    ctx.fillStyle = 'rgba(155, 89, 182, 0.35)';
-    ctx.fillRect(stormX, 0, canvas.width - stormX, canvas.height);
-    ctx.fillStyle = '#9b59b6'; ctx.fillRect(stormX, 0, 4, canvas.height); // Sturmkante
-
-    // Endbildschirme
+    // Game Over Bildschirm
     if (gameOver) {
-        ctx.fillStyle = 'rgba(11, 11, 16, 0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#ff4757'; ctx.font = 'bold 28px sans-serif'; ctx.fillText("🚨 REIN GECHOKED! PLATZ #2", 220, 200);
-    }
-    if (victory) {
-        ctx.fillStyle = 'rgba(11, 11, 16, 0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#1dd1a1'; ctx.font = 'bold 28px sans-serif'; ctx.fillText("🏆 APEX CHAMPION & VICTORY ROYALE!", 140, 200);
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#FF4136";
+        ctx.font = "bold 30px 'Courier New'";
+        ctx.textAlign = "center";
+        ctx.fillText("ABGESTÜRZT!", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = "#FFF";
+        ctx.font = "16px 'Courier New'";
+        ctx.fillText("TIPPEN ZUM NEUSTART", canvas.width / 2, canvas.height / 2 + 20);
     }
 }
 
-function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
-canvas.addEventListener('touchstart', initAudio);
-gameLoop();
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+// Start
+resetGame();
 </script>
 </body>
 </html>
