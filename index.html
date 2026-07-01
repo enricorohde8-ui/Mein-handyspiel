@@ -3,50 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>FortApex: Mobile Battle Royale</title>
+    <title>FortApex: Cyber Royale (My Vision)</title>
     <style>
         body {
-            margin: 0; padding: 0; background: #1a1a24; color: #fff;
+            margin: 0; padding: 0; background: #0b0b10; color: #fff;
             font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column;
             align-items: center; justify-content: center; min-height: 100vh;
             overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
         }
         #gameContainer { position: relative; width: 100vw; max-width: 800px; }
-        canvas { background: #2c3e50; display: block; width: 100%; height: auto; border: 3px solid #8e44ad; border-radius: 8px; }
-        #ui { position: absolute; top: 10px; left: 10px; font-weight: bold; text-shadow: 2px 2px 0 #000; font-size: 14px; pointer-events: none; line-height: 1.4; }
+        canvas { background: #13131a; display: block; width: 100%; height: auto; border: 3px solid #00d2d3; border-radius: 12px; box-shadow: 0 0 20px rgba(0, 210, 211, 0.3); }
+        #ui { position: absolute; top: 12px; left: 12px; font-weight: bold; text-shadow: 2px 2px 3px #000; font-size: 14px; pointer-events: none; line-height: 1.5; }
         
-        /* Mobile Touch-Steuerung */
+        /* Optimierte Touch-Steuerung fürs Smartphone */
         #controls {
             display: flex; justify-content: space-between; width: 100%;
-            max-width: 800px; padding: 10px; box-sizing: border-box; background: #111; border-radius: 0 0 8px 8px;
+            max-width: 800px; padding: 12px; box-sizing: border-box; background: #111116; border-radius: 0 0 12px 12px;
         }
-        .btn-group { display: flex; gap: 10px; }
+        .btn-group { display: flex; gap: 8px; }
         .btn-touch {
-            background: #34495e; color: white; border: none; border-radius: 12px;
-            font-size: 18px; font-weight: bold; width: 60px; height: 60px;
+            background: #1e272e; color: white; border: 2px solid #34495e; border-radius: 16px;
+            font-size: 20px; font-weight: bold; width: 65px; height: 65px;
             display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 0 #2c3e50;
         }
-        .btn-touch:active { background: #8e44ad; }
-        .btn-wide { width: 90px; font-size: 12px; text-align: center; }
-        #btnBuild { background: #27ae60; }
-        #btnAbility { background: #e67e22; }
-        #btnShoot { background: #e74c3c; width: 80px; height: 60px; }
+        .btn-touch:active { background: #00d2d3; border-color: #fff; box-shadow: 0 1px 0 #2c3e50; transform: translateY(3px); }
+        .btn-wide { width: 95px; font-size: 11px; text-align: center; text-transform: uppercase; }
+        #btnBuild { background: #27ae60; border-color: #2ecc71; box-shadow: 0 4px 0 #1e7e34; }
+        #btnAbility { background: #ff9f43; border-color: #f39c12; box-shadow: 0 4px 0 #d35400; }
+        #btnShoot { background: #ff4757; border-color: #ff6b6b; box-shadow: 0 4px 0 #c0392b; width: 80px; }
     </style>
 </head>
 <body>
 
-    <div style="text-align:center; font-size:12px; color:#bdc3c7; margin-bottom:4px;">📱 Bitte im Querformat spielen! Klicke ins Spiel für Sound.</div>
+    <div style="text-align:center; font-size:12px; color:#57606f; margin-bottom:5px; font-weight: bold;">📱 QUERFORMAT NUTZEN • TAP FÜR SOUND</div>
 
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="400"></canvas>
         <div id="ui">
-            Leben: <span id="hpUI">100</span> | Schild: <span id="shieldUI">50</span><br>
-            Gegner übrig: <span id="enemiesUI">3</span> | Holz (Bauen): <span id="woodUI">5</span><br>
-            <span id="zoneUI" style="color: #ff4757;">STORM: Bereit</span>
+            ❤️ LEBEN: <span id="hpUI">100</span> | 🛡️ SCHILD: <span id="shieldUI">50</span><br>
+            🪓 HOLZ: <span id="woodUI">5</span> | 🎯 GEGNER: <span id="enemiesUI">3</span><br>
+            ⚠️ <span id="zoneUI" style="color: #ff4757;">STORM AKTIV</span>
         </div>
     </div>
 
-    <!-- Mobile Tasten -->
     <div id="controls">
         <div class="btn-group">
             <button class="btn-touch" id="btnLeft">◀</button>
@@ -55,9 +55,9 @@
         </div>
         
         <div class="btn-group">
-            <button class="btn-touch btn-wide" id="btnBuild">BAUEN<br>(Wand)</button>
-            <button class="btn-touch btn-wide" id="btnAbility">APEX SLIDE<br>(Fähigkeit)</button>
-            <button class="btn-touch" id="btnShoot">💥</button>
+            <button class="btn-touch btn-wide" id="btnBuild">🛠️ WAND<br>BAUEN</button>
+            <button class="btn-touch btn-wide" id="btnAbility">⚡ APEX<br>SLIDE</button>
+            <button class="btn-touch" id="btnShoot">🔥</button>
         </div>
     </div>
 
@@ -65,108 +65,116 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Game States
+// Spielobjekte
 let player = {
-    x: 100, y: 300, w: 20, h: 35, vx: 0, vy: 0, 
+    x: 80, y: 300, w: 22, h: 36, vx: 0, vy: 0, 
     hp: 100, shield: 50, wood: 5, facing: 'right',
-    isSliding: false, slideTimer: 0, abilityCooldown: 0
+    isSliding: false, slideTimer: 0, abilityCooldown: 0, grounded: false
 };
 
+// Gegner bewegen sich jetzt leicht hin und her
 let enemies = [
-    { x: 400, y: 300, w: 20, h: 35, hp: 50, shootCooldown: 60 },
-    { x: 650, y: 200, w: 20, h: 35, hp: 50, shootCooldown: 90 },
-    { x: 750, y: 300, w: 20, h: 35, hp: 100, shootCooldown: 40 } // "Boss" Apex Enemy
+    { x: 380, y: 220, startX: 350, endX: 480, w: 22, h: 36, hp: 60, dir: 1, v: 1, shootCooldown: 50 },
+    { x: 620, y: 140, startX: 600, endX: 720, w: 22, h: 36, hp: 60, dir: -1, v: 1.2, shootCooldown: 80 },
+    { x: 700, y: 344, startX: 650, endX: 760, w: 22, h: 36, hp: 100, dir: 1, v: 0.8, shootCooldown: 40 } // Boss Legend
 ];
 
 let platforms = [
-    { x: 0, y: 380, w: 1200, h: 20 }, // Boden
-    { x: 350, y: 260, w: 150, h: 15 }, // Apex Highground
-    { x: 600, y: 180, w: 150, h: 15 }
+    { x: 0, y: 380, w: 1000, h: 20 }, 
+    { x: 340, y: 260, w: 160, h: 14 }, 
+    { x: 580, y: 180, w: 160, h: 14 }
+];
+
+// MEIN VISION-FEATURE: Octane Launchpads!
+let launchpads = [
+    { x: 260, y: 372, w: 35, h: 8 },
+    { x: 520, y: 372, w: 35, h: 8 }
 ];
 
 let bullets = [];
 let buildWalls = [];
-let stormX = 800; // Der Sturm kommt von rechts!
+let stormX = 820; 
 let gameOver = false;
 let victory = false;
 
-// Audio (Web Audio API)
+// Audio Engine
 let audioCtx = null;
 function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 function playSound(f, type, d, v=0.1) {
     if (!audioCtx) return;
-    let osc = audioCtx.createOscillator(); let g = audioCtx.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-    g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + d);
-    osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + d);
+    try {
+        let osc = audioCtx.createOscillator(); let g = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + d);
+        osc.connect(g); g.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + d);
+    } catch(e){}
 }
 
-// Touch Input Erkennung
+// Touch Controller Setup
 let keys = { left: false, right: false };
-function bindTouch(id, actionPress, actionRelease) {
+function bindTouch(id, press, release) {
     const btn = document.getElementById(id);
-    btn.addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); actionPress(); });
-    if(actionRelease) btn.addEventListener('touchend', (e) => { e.preventDefault(); actionRelease(); });
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); press(); });
+    if(release) btn.addEventListener('touchend', (e) => { e.preventDefault(); release(); });
 }
 
 bindTouch('btnLeft', () => { keys.left = true; player.facing = 'left'; }, () => keys.left = false);
 bindTouch('btnRight', () => { keys.right = true; player.facing = 'right'; }, () => keys.right = false);
-
 bindTouch('btnJump', () => {
     if (player.grounded) {
-        player.vy = -10;
+        player.vy = -10.5;
         player.grounded = false;
-        playSound(350, 'triangle', 0.15);
+        playSound(300, 'triangle', 0.12, 0.15);
     }
 });
 
-// FORTNITE FEATURE: Bauen
+// Wand bauen (Fortnite Grid System vereinfacht)
 bindTouch('btnBuild', () => {
-    if (player.wood > 0) {
-        let wallX = player.facing === 'right' ? player.x + 30 : player.x - 20;
-        buildWalls.push({ x: wallX, y: player.y - 15, w: 12, h: 50, hp: 3 });
+    if (player.wood > 0 && !gameOver && !victory) {
+        let wallX = player.facing === 'right' ? player.x + 35 : player.x - 25;
+        buildWalls.push({ x: wallX, y: player.y - 14, w: 14, h: 50, hp: 4 });
         player.wood--;
-        playSound(180, 'triangle', 0.1); // Bau-Sound
+        playSound(200, 'triangle', 0.08, 0.2);
     }
 });
 
-// APEX LEGENDS FEATURE: Movement Slide (Rutschen + Tempoboost)
+// Apex Slide Fähigkeit
 bindTouch('btnAbility', () => {
-    if (player.abilityCooldown <= 0) {
+    if (player.abilityCooldown <= 0 && !gameOver && !victory) {
         player.isSliding = true;
-        player.slideTimer = 20;
-        player.abilityCooldown = 90; // Cooldown
-        playSound(150, 'sawtooth', 0.3, 0.2);
+        player.slideTimer = 22;
+        player.abilityCooldown = 80;
+        playSound(160, 'sawtooth', 0.25, 0.2);
     }
 });
 
-// Schießen (Fortnite/Apex Gunplay)
+// Waffen-Feuer
 bindTouch('btnShoot', () => {
-    let bVx = player.facing === 'right' ? 8 : -8;
-    bullets.push({ x: player.x + 10, y: player.y + 12, vx: bVx, vy: 0, fromPlayer: true });
-    playSound(500, 'square', 0.1, 0.2);
+    if (gameOver || victory) return;
+    let bVx = player.facing === 'right' ? 9 : -9;
+    bullets.push({ x: player.x + 10, y: player.isSliding ? player.y + 25 : player.y + 12, vx: bVx, vy: 0, fromPlayer: true });
+    playSound(450, 'square', 0.08, 0.15);
 });
 
-// Physik & Kollisionen
+// Haupt-Update Schleife
 function update() {
     if (gameOver || victory) return;
 
-    // Cooldowns
     if (player.abilityCooldown > 0) player.abilityCooldown--;
 
-    // Movement & Apex Slide
-    let currentSpeed = player.speed || 4;
+    // Movement Geschwindigkeiten berechnen
+    let speed = 4.2;
     if (player.isSliding) {
-        currentSpeed = 8; // Schnellerer Apex-Slide!
+        speed = 8.5; 
         player.slideTimer--;
         if (player.slideTimer <= 0) player.isSliding = false;
     }
 
-    if (keys.left) player.vx = -currentSpeed;
-    else if (keys.right) player.vx = currentSpeed;
+    if (keys.left) player.vx = -speed;
+    else if (keys.right) player.vx = speed;
     else player.vx = 0;
 
-    player.vy += 0.5; // Schwerkraft
+    player.vy += 0.48; // Schwerkraft
     player.x += player.vx;
     player.y += player.vy;
     player.grounded = false;
@@ -177,62 +185,79 @@ function update() {
             player.y = p.y - player.h; player.vy = 0; player.grounded = true;
         }
     }
-    // Kollision mit gebauten Wänden (Spieler läuft nicht durch eigene Wände)
+
+    // Launchpad Trigger Logik (Apex Jump)
+    for (let lp of launchpads) {
+        if (player.x + player.w > lp.x && player.x < lp.x + lp.w && player.y + player.h > lp.y && player.y + player.h - player.vy <= lp.y + 4) {
+            player.vy = -15; // Katapultiert den Spieler extrem hoch!
+            player.grounded = false;
+            playSound(600, 'sine', 0.3, 0.25);
+        }
+    }
+
+    // Wand-Kollision für Spieler
     for (let w of buildWalls) {
         if (player.x + player.w > w.x && player.x < w.x + w.w && player.y + player.h > w.y && player.y < w.y + w.h) {
-            player.x -= player.vx; // Stop
+            player.x -= player.vx;
         }
     }
 
-    // Gegner-KI & Schießen
+    // Gegner KI Bewegung & automatisches Schießen
     for (let e of enemies) {
+        e.x += e.v * e.dir;
+        if (e.x < e.startX || e.x > e.endX) e.dir *= -1;
+
         e.shootCooldown--;
         if (e.shootCooldown <= 0) {
-            let diffX = player.x - e.x;
-            let bVx = diffX > 0 ? 5 : -5;
-            bullets.push({ x: e.x, y: e.y + 10, vx: bVx, vy: 0, fromPlayer: false });
-            e.shootCooldown = 80 + Math.random() * 40;
+            let bVx = (player.x > e.x) ? 5.5 : -5.5;
+            bullets.push({ x: e.x + 10, y: e.y + 12, vx: bVx, vy: 0, fromPlayer: false });
+            e.shootCooldown = 70 + Math.random() * 50;
         }
     }
 
-    // Kugeln bewegen & checken
+    // Kugel-Logik verarbeiten
     for (let i = bullets.length - 1; i >= 0; i--) {
         let b = bullets[i];
         b.x += b.vx;
 
-        // Wand-Treffer (Wände blockieren Schüsse wie in Fortnite!)
+        // Grenzwert-Prüfung außerhalb des Canvas
+        if (b.x < 0 || b.x > canvas.width) { bullets.splice(i, 1); continue; }
+
+        // Wand-Treffer prüfen
+        let bulletRemoved = false;
         for (let j = buildWalls.length - 1; j >= 0; j--) {
             let w = buildWalls[j];
             if (b.x > w.x && b.x < w.x + w.w && b.y > w.y && b.y < w.y + w.h) {
                 w.hp--;
                 bullets.splice(i, 1);
-                if (w.hp <= 0) buildWalls.splice(j, 1); // Wand zerstört
+                bulletRemoved = true;
+                if (w.hp <= 0) buildWalls.splice(j, 1); 
                 break;
             }
         }
-        if (!bullets[i]) continue;
+        if (bulletRemoved) continue;
 
-        // Spieler getroffen?
+        // Spieler Treffersensor
         if (!b.fromPlayer && b.x > player.x && b.x < player.x + player.w && b.y > player.y && b.y < player.y + player.h) {
             bullets.splice(i, 1);
             if (player.shield > 0) player.shield -= 25;
             else player.hp -= 20;
-            playSound(100, 'sawtooth', 0.2);
-            if (player.hp <= 0) gameOver = true;
+            playSound(120, 'sawtooth', 0.15, 0.2);
+            if (player.hp <= 0) { player.hp = 0; gameOver = true; }
             continue;
         }
 
-        // Gegner getroffen?
+        // Gegner Treffersensor
         if (b.fromPlayer) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 let e = enemies[j];
                 if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
                     bullets.splice(i, 1);
                     e.hp -= 25;
-                    playSound(300, 'sine', 0.1);
+                    playSound(280, 'sine', 0.08, 0.15);
                     if (e.hp <= 0) {
                         enemies.splice(j, 1);
-                        player.wood += 3; // Looten: Holz fürs Eliminieren!
+                        player.wood += 4; // Mehr Baumaterial belohnen!
                     }
                     break;
                 }
@@ -240,85 +265,98 @@ function update() {
         }
     }
 
-    // FORTNITE DER STURM (Zone schrumpft von rechts nach links)
-    stormX -= 0.25;
+    // Der Sturm schrumpft
+    stormX -= 0.35;
     if (player.x > stormX) {
-        player.hp -= 0.2; // Sturmschaden!
-        if (player.hp <= 0) gameOver = true;
+        player.hp -= 0.3;
+        if (player.hp <= 0) { player.hp = 0; gameOver = true; }
     }
+
+    // Kartenbegrenzung links
+    if (player.x < 0) player.x = 0;
 
     if (enemies.length === 0) victory = true;
 
-    // UI Updates
-    document.getElementById('hpUI').innerText = Math.max(0, Math.floor(player.hp));
-    document.getElementById('shieldUI').innerText = player.shield;
+    // UI Aktualisierung
+    document.getElementById('hpUI').innerText = Math.ceil(player.hp);
+    document.getElementById('shieldUI').innerText = Math.max(0, player.shield);
     document.getElementById('enemiesUI').innerText = enemies.length;
     document.getElementById('woodUI').innerText = player.wood;
-    document.getElementById('zoneUI').innerText = "STURM: " + Math.floor(stormX) + "m";
+    document.getElementById('zoneUI').innerText = "STURM: " + Math.max(0, Math.floor(stormX)) + "m";
 }
 
-// Zeichnen (Grafik)
+// Visuelle Engine (Grafik)
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Plattformen zeichnen
-    ctx.fillStyle = '#34495e';
-    for (let p of platforms) ctx.fillRect(p.x, p.y, p.w, p.h);
+    // Neon-Hintergrundgitter (Cyber-Look)
+    ctx.strokeStyle = '#1e272e'; ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=40) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke(); }
 
-    // Fortnite Wände zeichnen
-    ctx.fillStyle = '#d35400'; // Holz-Farbe
+    // Plattformen zeichnen (Neon-Cyan)
+    ctx.fillStyle = '#0abde3';
+    for (let p of platforms) {
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = '#00d2d3'; ctx.fillRect(p.x, p.y, p.w, 3); // Highlighting oben
+        ctx.fillStyle = '#0abde3';
+    }
+
+    // Launchpads zeichnen (Neon-Grün)
+    for (let lp of launchpads) {
+        ctx.fillStyle = '#10ac84'; ctx.fillRect(lp.x, lp.y, lp.w, lp.h);
+        ctx.fillStyle = '#1dd1a1'; ctx.fillRect(lp.x + 4, lp.y, lp.w - 8, 3);
+    }
+
+    // Holz-Wände zeichnen (Fortnite-Stil)
+    ctx.fillStyle = '#ff9f43';
     for (let w of buildWalls) {
         ctx.fillRect(w.x, w.y, w.w, w.h);
-        ctx.strokeStyle = '#e67e22';
-        ctx.strokeRect(w.x, w.y, w.w, w.h);
+        ctx.strokeStyle = '#ee5253'; ctx.lineWidth = 2; ctx.strokeRect(w.x, w.y, w.w, w.h);
     }
 
-    // Spieler zeichnen (Apex Legend Design)
-    ctx.fillStyle = player.isSliding ? '#e67e22' : '#9b59b6'; // Verwandelt sich beim Rutschen
-    let renderH = player.isSliding ? player.h / 2 : player.h;
-    let renderY = player.isSliding ? player.y + player.h / 2 : player.y;
-    ctx.fillRect(player.x, renderY, player.w, renderH);
+    // Spieler (Apex Held: Neon-Violett)
+    ctx.fillStyle = player.isSliding ? '#ff9f43' : '#9b59b6';
+    let rH = player.isSliding ? player.h / 1.8 : player.h;
+    let rY = player.isSliding ? player.y + (player.h - rH) : player.y;
+    ctx.fillRect(player.x, rY, player.w, rH);
     
-    // Schild-Leiste über dem Kopf
+    // Schildbalken-Effekt über dem Kopf
     if (player.shield > 0) {
-        ctx.fillStyle = '#00d2d3';
-        ctx.fillRect(player.x - 5, player.y - 10, (player.w + 10) * (player.shield / 50), 4);
+        ctx.fillStyle = '#00d2d3'; ctx.fillRect(player.x - 4, player.y - 12, (player.w + 8) * (player.shield / 50), 4);
     }
 
-    // Gegner zeichnen
-    ctx.fillStyle = '#e74c3c';
+    // Gegner (Neon-Rot)
+    ctx.fillStyle = '#ff4757';
     for (let e of enemies) {
         ctx.fillRect(e.x, e.y, e.w, e.h);
-        // Rote Lebensleiste
-        ctx.fillStyle = '#c0392b';
-        ctx.fillRect(e.x, e.y - 8, e.w, 3);
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(e.x, e.y - 8, e.w * (e.hp / (e.hp > 50 ? 100 : 50)), 3);
-        ctx.fillStyle = '#e74c3c';
+        ctx.fillStyle = '#ff6b6b'; ctx.fillRect(e.x, e.y - 8, e.w * (e.hp / (e.hp > 60 ? 100 : 60)), 3);
+        ctx.fillStyle = '#ff4757';
     }
 
-    // Schüsse zeichnen
+    // Schüsse (Laser-Gelb)
     ctx.fillStyle = '#f1c40f';
-    for (let b of bullets) ctx.fillRect(b.x, b.y, 6, 3);
+    for (let b of bullets) ctx.fillRect(b.x, b.y, 8, 3);
 
-    // DER STURM (Visuell)
-    ctx.fillStyle = 'rgba(142, 68, 173, 0.4)'; // Lila transparente Zone
+    // Der Sturm (Lila, pulsierende Todeszone)
+    ctx.fillStyle = 'rgba(155, 89, 182, 0.35)';
     ctx.fillRect(stormX, 0, canvas.width - stormX, canvas.height);
+    ctx.fillStyle = '#9b59b6'; ctx.fillRect(stormX, 0, 4, canvas.height); // Sturmkante
 
-    // Screens
+    // Endbildschirme
     if (gameOver) {
-        ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#e74c3c'; ctx.font = 'bold 30px sans-serif'; ctx.fillText("#2 RAHMEN-CHOKE", 260, 200);
+        ctx.fillStyle = 'rgba(11, 11, 16, 0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#ff4757'; ctx.font = 'bold 28px sans-serif'; ctx.fillText("🚨 REIN GECHOKED! PLATZ #2", 220, 200);
     }
     if (victory) {
-        ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#2ecc71'; ctx.font = 'bold 30px sans-serif'; ctx.fillText("🏆 APEX-CHAMPION & VICTORY ROYALE!", 120, 200);
+        ctx.fillStyle = 'rgba(11, 11, 16, 0.85)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.fillStyle = '#1dd1a1'; ctx.font = 'bold 28px sans-serif'; ctx.fillText("🏆 APEX CHAMPION & VICTORY ROYALE!", 140, 200);
     }
 }
 
-function loop() { update(); draw(); requestAnimationFrame(loop); }
+function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 canvas.addEventListener('touchstart', initAudio);
-loop();
+gameLoop();
 </script>
 </body>
 </html>
